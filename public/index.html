@@ -20,18 +20,27 @@
       if (!btn) return;
       // Delay to allow React to render the new view
 setTimeout(() => {
-          const show = !!document.querySelector('button[class*="bg-blue-600/10"]');
-          btn.style.display = show ? 'block' : 'none';
-          if (show) {
-            // Move button below the header (which contains Nuevo Préstamo)
-            const header = document.querySelector('header');
-            if (header && btn.parentNode !== header.parentNode) {
-              header.parentNode.insertBefore(btn, header.nextSibling);
-              // Reset positioning for normal flow
+            const show = !!document.querySelector('button[class*="bg-blue-600/10"]');
+            btn.style.display = show ? 'block' : 'none';
+            if (show) {
+              // Try to insert after the "Nuevo Préstamo" button
+              const newLoanBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('Nuevo Préstamo'));
+              if (newLoanBtn) {
+                const parent = newLoanBtn.parentNode;
+                if (parent && btn.parentNode !== parent) {
+                  parent.insertBefore(btn, newLoanBtn.nextSibling);
+                }
+              } else {
+                // Fallback: insert after the header element
+                const header = document.querySelector('header');
+                if (header && btn.parentNode !== header.parentNode) {
+                  header.parentNode.insertBefore(btn, header.nextSibling);
+                }
+              }
+              // Ensure normal flow styling
               btn.style.position = 'static';
               btn.style.marginTop = '1rem';
             }
-          }
         }, 500);
     };
     // Initial check
