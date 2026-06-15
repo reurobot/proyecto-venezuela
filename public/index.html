@@ -11,8 +11,38 @@
   <body>
     <div id="root"></div>
     <!-- Botón para acceso rápido al consolidado de pagos de préstamos -->
-    <a href="/loan-payments.html" style="position:fixed; top:10px; right:10px; display:block; margin:1rem; background:#fff; padding:0.5rem; border-radius:4px; z-index:10000; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
+    <a href="/loan-payments.html" id="consolidadoBtn" style="position:fixed; top:10px; right:10px; display:none; margin:1rem; background:#fff; padding:0.5rem; border-radius:4px; z-index:20000; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
       <button type="button">Ver consolidado de pagos de préstamos</button>
     </a>
-  </body>
+  <script>
+    const toggleConsolidadoBtn = () => {
+      const btn = document.getElementById('consolidadoBtn');
+      if (!btn) return;
+      const show = window.location.pathname.includes('/loans');
+      btn.style.display = show ? 'block' : 'none';
+    };
+    // Initial check
+    toggleConsolidadoBtn();
+    // Listen to history changes (popstate covers back/forward)
+    window.addEventListener('popstate', toggleConsolidadoBtn);
+    // Monkey‑patch pushState / replaceState to fire events for client‑side navigation
+    const _push = history.pushState;
+    const _replace = history.replaceState;
+    history.pushState = function(state, title, url) {
+      const result = _push.apply(this, arguments);
+      window.dispatchEvent(new Event('pushstate'));
+      window.dispatchEvent(new Event('locationchange'));
+      return result;
+    };
+    history.replaceState = function(state, title, url) {
+      const result = _replace.apply(this, arguments);
+      window.dispatchEvent(new Event('replacestate'));
+      window.dispatchEvent(new Event('locationchange'));
+      return result;
+    };
+    window.addEventListener('pushstate', toggleConsolidadoBtn);
+    window.addEventListener('replacestate', toggleConsolidadoBtn);
+    window.addEventListener('locationchange', toggleConsolidadoBtn);
+  </script>
+</body>
 </html>
