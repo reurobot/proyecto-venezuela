@@ -136,7 +136,9 @@ router.get('/', authMiddleware, async (req, res) => {
         dailyPenaltyPercent: l.dailyPenaltyPercent ?? 3,
         compoundOnDefault: l.compoundOnDefault ?? true,
         frecuencia: (l.frequency || 'diaria').toLowerCase(),
+        installmentsData: installments,
         sequentialId: l.sequentialId,
+
       };
     });
 
@@ -267,8 +269,8 @@ router.get('/', authMiddleware, async (req, res) => {
           dueDate: inst.dueDate ? new Date(inst.dueDate).toISOString().split('T')[0] : '',
           amountUsd: inst.amountUsd || 0,
           status: inst.status === 'late' ? 'overdue' : (inst.status || 'pending'),
-sequentialId: l.sequentialId,
-          installmentsData: installments,
+
+
         });
       }
     }
