@@ -20,8 +20,8 @@
       if (!btn) return;
       // Delay to allow React to render the new view
       setTimeout(() => {
-        const heading = document.querySelector('h2');
-        const show = heading && heading.textContent.trim().toLowerCase().includes('préstamos');
+        const loanBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim().toLowerCase().includes('préstamos'));
+        const show = loanBtn && loanBtn.classList.contains('bg-blue-600/10');
         btn.style.display = show ? 'block' : 'none';
       }, 500);
     };
