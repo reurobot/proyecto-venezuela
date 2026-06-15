@@ -18,9 +18,12 @@
     const toggleConsolidadoBtn = () => {
       const btn = document.getElementById('consolidadoBtn');
       if (!btn) return;
-       const heading = document.querySelector('h2');
-       const show = heading && heading.textContent.trim().toLowerCase().includes('préstamos');
-      btn.style.display = show ? 'block' : 'none';
+      // Delay to allow React to render the new view
+      setTimeout(() => {
+        const heading = document.querySelector('h2');
+        const show = heading && heading.textContent.trim().toLowerCase().includes('préstamos');
+        btn.style.display = show ? 'block' : 'none';
+      }, 500);
     };
     // Initial check
     toggleConsolidadoBtn();
