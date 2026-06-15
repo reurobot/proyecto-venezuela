@@ -16,6 +16,7 @@ import appDataRouter from './routes/appData.js';
 import usersRouter from './routes/users.js';
 import adminRouter from './routes/admin.js';
 import debugRouter from './routes/debug.js';
+import loanPaymentsRouter from './routes/loanPayments.js';
 import notificationsRouter from './routes/notifications.js';
 
 const app = express();
@@ -49,6 +50,7 @@ api.use('/bcv-rates', bcvRatesRouter);
 api.use('/app-data', appDataRouter);
 api.use('/users', usersRouter);
 api.use('/notifications', notificationsRouter);
+api.use('/loan-payments', loanPaymentsRouter);
 api.use('/debug', debugRouter);
 
 app.use('/api/v1', api);
