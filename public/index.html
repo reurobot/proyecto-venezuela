@@ -18,7 +18,8 @@
     const toggleConsolidadoBtn = () => {
       const btn = document.getElementById('consolidadoBtn');
       if (!btn) return;
-      const show = window.location.pathname.includes('/loans');
+       const heading = document.querySelector('h2');
+       const show = heading && heading.textContent.trim().toLowerCase().includes('préstamos');
       btn.style.display = show ? 'block' : 'none';
     };
     // Initial check
