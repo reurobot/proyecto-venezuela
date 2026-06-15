@@ -82,9 +82,97 @@ router.post('/', authMiddleware, requireRole('admin', 'asesor'), validate(schema
 
 // Register payment for an installment (admin or assigned asesor)
 router.post('/:id/payments', authMiddleware, requireRole('admin', 'asesor'), validate(z.object({
-  installmentNumber: z.number().int().positive(),
+  installmentNumber: z.number().int().positive().optional(),
   amount: z.number().positive()
 })), async (req, res) => {
+  const { installmentNumber, amount } = req.validated;
+  const loan = await Loan.findById(req.params.id);
+  if (!loan) return res.status(404).json({ error: 'Préstamo no encontrado' });
+
+  // Helper to process a single installment
+  const processInstallment = async (inst, remainingAmount) => {
+    const isLate = inst.status === 'late' || new Date(inst.dueDate) < new Date();
+    let penalty = 0;
+    let compoundApplied = false;
+    if (isLate && !inst.lateFeeApplied) {
+      const now = new Date();
+      const msLate = now.getTime() - new Date(inst.dueDate).getTime();
+      const daysLate = Math.max(0, Math.floor(msLate / (1000 * 60 * 60 * 24)));
+      if (daysLate > 0 && loan.dailyPenaltyPercent > 0) {
+        const penaltyDays = Math.min(daysLate, loan.graceDays);
+        const dailyRate = loan.dailyPenaltyPercent / 100;
+        penalty = inst.amountUsd * dailyRate * penaltyDays;
+        if (daysLate > loan.graceDays && loan.compoundOnDefault) {
+          compoundApplied = true;
+        }
+      }
+      inst.lateFeeApplied = true;
+    }
+    const due = inst.amountUsd - (inst.paidAmount || 0);
+    const pay = Math.min(due, remainingAmount);
+    if (pay <= 0) return { paid: 0, penalty, compoundApplied, remaining: remainingAmount };
+    inst.paidAmount = (inst.paidAmount || 0) + pay;
+    inst.status = inst.paidAmount >= inst.amountUsd ? 'paid' : 'partial';
+    inst.paidAt = new Date();
+    // update loan aggregates proportionally
+    loan.capitalRecovered += inst.capitalPortion * (pay / inst.amountUsd);
+    loan.interestEarned += inst.interestPortion * (pay / inst.amountUsd);
+    loan.lateFees += penalty;
+    return { paid: pay, penalty, compoundApplied, remaining: remainingAmount - pay };
+  };
+
+  let remaining = amount;
+  let totalPenalty = 0;
+  let compound = false;
+  const installmentsPaid = [];
+
+  if (installmentNumber !== undefined) {
+    const inst = loan.installmentsData.find(i => i.installmentNumber === installmentNumber);
+    if (!inst) return res.status(404).json({ error: 'Cuota no encontrada' });
+    const resInst = await processInstallment(inst, remaining);
+    totalPenalty += resInst.penalty;
+    compound = compound || resInst.compoundApplied;
+    remaining = resInst.remaining;
+    if (resInst.paid > 0) installmentsPaid.push(inst.installmentNumber);
+  } else {
+    // Apply payment across pending installments in order
+    for (const inst of loan.installmentsData) {
+      if (remaining <= 0) break;
+      if (inst.status === 'paid') continue;
+      const resInst = await processInstallment(inst, remaining);
+      totalPenalty += resInst.penalty;
+      compound = compound || resInst.compoundApplied;
+      remaining = resInst.remaining;
+      if (resInst.paid > 0) installmentsPaid.push(inst.installmentNumber);
+    }
+  }
+
+  // If there is still amount left, reject as overpayment
+  if (remaining > 0.00001) {
+    return res.status(400).json({ error: 'Cantidad supera el saldo pendiente del préstamo' });
+  }
+
+  if (compound) {
+    const unpaidInterest = loan.totalToPay - loan.capitalRecovered - loan.interestEarned;
+    const newCapital = loan.amountUsd - loan.capitalRecovered + unpaidInterest;
+    const newInterest = newCapital * loan.interestRate / 100;
+    loan.totalToPay = newCapital + newInterest;
+    loan.amountUsd = newCapital;
+    loan.interestEarned = 0;
+    loan.capitalRecovered = 0;
+  }
+
+  loan.updatedAt = new Date();
+  await loan.save();
+  res.json({
+    message: 'Pago registrado',
+    loanId: loan._id,
+    installmentsPaid,
+    totalApplied: amount - remaining,
+    penaltyAmount: totalPenalty,
+    compoundApplied: compound
+  });
+});
   const { installmentNumber, amount } = req.validated;
   const loan = await Loan.findById(req.params.id);
   if (!loan) return res.status(404).json({ error: 'Préstamo no encontrado' });
