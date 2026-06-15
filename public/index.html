@@ -23,9 +23,13 @@ setTimeout(() => {
           const show = !!document.querySelector('button[class*="bg-blue-600/10"]');
           btn.style.display = show ? 'block' : 'none';
           if (show) {
-            const newLoanBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('Nuevo Préstamo'));
-            if (newLoanBtn && !newLoanBtn.nextElementSibling?.id?.includes('consolidadoBtn')) {
-              newLoanBtn.parentNode.insertBefore(btn, newLoanBtn.nextSibling);
+            // Move button below the header (which contains Nuevo Préstamo)
+            const header = document.querySelector('header');
+            if (header && btn.parentNode !== header.parentNode) {
+              header.parentNode.insertBefore(btn, header.nextSibling);
+              // Reset positioning for normal flow
+              btn.style.position = 'static';
+              btn.style.marginTop = '1rem';
             }
           }
         }, 500);
