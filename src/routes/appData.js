@@ -246,15 +246,34 @@ router.get('/', authMiddleware, async (req, res) => {
 
     // Recent treasury transactions
     const transactionsRaw = await TreasuryTransaction.find().sort({ createdAt: -1 }).limit(50);
-    const transactions = transactionsRaw.map(t => ({
-      id: t._id.toString(),
-      accountId: t.accountId ? t.accountId.toString() : '',
-      type: t.type,
-      amountUsd: t.amountUsd,
-      commission: t.commission || 0,
-      description: t.description || '',
-      createdAt: t.createdAt ? t.createdAt.toISOString() : '',
-    }));
+const transactions = transactionsRaw.map(t => ({
+        id: t._id.toString(),
+        accountId: t.accountId ? t.accountId.toString() : '',
+        type: t.type,
+        amountUsd: t.amountUsd,
+        commission: t.commission || 0,
+        description: t.description || '',
+        createdAt: t.createdAt ? t.createdAt.toISOString() : '',
+      }));
+
+    // Loan payments (movimientos de préstamos) – lista plana de todas las cuotas que tienen abono
+    const loanPaymentsRaw = await Loan.find({}).select('installmentsData');
+    const loanPayments = [];
+    loanPaymentsRaw.forEach(l => {
+      l.installmentsData?.forEach(inst => {
+        if (inst.paidAmount && inst.paidAmount > 0) {
+          loanPayments.push({
+            loanId: l._id.toString(),
+            installmentNumber: inst.installmentNumber,
+            dueDate: inst.dueDate ? new Date(inst.dueDate).toISOString() : null,
+            amountUsd: inst.amountUsd,
+            paidAmount: inst.paidAmount,
+            paidAt: inst.paidAt ? new Date(inst.paidAt).toISOString() : null,
+            status: inst.status,
+          });
+        }
+      });
+    });
 
     // Calendar events (all pending installments)
     const calendarEvents = [];
@@ -289,6 +308,7 @@ router.get('/', authMiddleware, async (req, res) => {
       advisors,
       waitQueue,
       transactions,
+      loanPayments,
       notifications,
       unreadCount,
       calendarEvents,
