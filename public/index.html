@@ -11,7 +11,7 @@
   <body>
     <div id="root"></div>
     <!-- Botón para acceso rápido al consolidado de pagos de préstamos -->
-    <a href="/loan-payments.html" id="consolidadoBtn" style="position:fixed; top:10px; right:10px; display:none; margin:1rem; background:#fff; padding:0.5rem; border-radius:4px; z-index:20000; box-shadow:0 2px 6px rgba(0,0,0,0.2);">
+    <a href="/loan-payments.html" id="consolidadoBtn" style="display:none; margin:0;">
       <button type="button">Ver consolidado de pagos de préstamos</button>
     </a>
   <script>
@@ -19,10 +19,16 @@
       const btn = document.getElementById('consolidadoBtn');
       if (!btn) return;
       // Delay to allow React to render the new view
-      setTimeout(() => {
-        const show = !!document.querySelector('button[class*="bg-blue-600/10"]');
-        btn.style.display = show ? 'block' : 'none';
-      }, 500);
+setTimeout(() => {
+          const show = !!document.querySelector('button[class*="bg-blue-600/10"]');
+          btn.style.display = show ? 'block' : 'none';
+          if (show) {
+            const newLoanBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent && b.textContent.includes('Nuevo Préstamo'));
+            if (newLoanBtn && !newLoanBtn.nextElementSibling?.id?.includes('consolidadoBtn')) {
+              newLoanBtn.parentNode.insertBefore(btn, newLoanBtn.nextSibling);
+            }
+          }
+        }, 500);
     };
     // Initial check
     toggleConsolidadoBtn();
