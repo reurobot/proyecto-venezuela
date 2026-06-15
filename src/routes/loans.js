@@ -14,7 +14,7 @@ router.get('/', authMiddleware, async (req, res) => {
   if (role === 'asesor') {
     filter.advisorId = id;
   }
-  const loans = await Loan.find(filter).populate('clientId advisorId');
+  const loans = await Loan.find(filter).populate('clientId advisorId').lean();
   res.json(loans);
 });
 
@@ -172,60 +172,6 @@ router.post('/:id/payments', authMiddleware, requireRole('admin', 'asesor'), val
     penaltyAmount: totalPenalty,
     compoundApplied: compound
   });
-});
-  const { installmentNumber, amount } = req.validated;
-  const loan = await Loan.findById(req.params.id);
-  if (!loan) return res.status(404).json({ error: 'Préstamo no encontrado' });
-
-  const installment = loan.installmentsData.find(i => i.installmentNumber === installmentNumber);
-  if (!installment) return res.status(404).json({ error: 'Cuota no encontrada' });
-
-  const isLate = installment.status === 'late' || new Date(installment.dueDate) < new Date();
-  let penaltyAmount = 0;
-  let compoundApplied = false;
-
-  if (isLate && !installment.lateFeeApplied) {
-    const now = new Date();
-    const msLate = now.getTime() - new Date(installment.dueDate).getTime();
-    const daysLate = Math.max(0, Math.floor(msLate / (1000 * 60 * 60 * 24)));
-
-    if (daysLate > 0 && loan.dailyPenaltyPercent > 0) {
-      const penaltyDays = Math.min(daysLate, loan.graceDays);
-      const dailyRate = loan.dailyPenaltyPercent / 100;
-      penaltyAmount = installment.amountUsd * dailyRate * penaltyDays;
-
-      // If past grace period, compound interest onto capital
-      if (daysLate > loan.graceDays && loan.compoundOnDefault) {
-        compoundApplied = true;
-      }
-    }
-    installment.lateFeeApplied = true;
-  }
-
-  installment.paidAmount += amount;
-  installment.status = installment.paidAmount >= installment.amountUsd ? 'paid' : 'partial';
-  installment.paidAt = new Date();
-
-  // Update aggregated loan fields
-  loan.capitalRecovered += installment.capitalPortion * (amount / installment.amountUsd);
-  loan.interestEarned += installment.interestPortion * (amount / installment.amountUsd);
-  loan.lateFees += penaltyAmount;
-
-  // If compounded, add interest to capital and reapply rate on remaining balance
-  if (compoundApplied) {
-    const unpaidInterest = loan.totalToPay - loan.capitalRecovered - loan.interestEarned;
-    const newCapital = loan.amountUsd - loan.capitalRecovered + unpaidInterest;
-    const newInterest = newCapital * loan.interestRate / 100;
-    loan.totalToPay = newCapital + newInterest;
-    loan.amountUsd = newCapital;
-    loan.interestEarned = 0;
-    loan.capitalRecovered = 0;
-  }
-
-  loan.updatedAt = new Date();
-
-  await loan.save();
-  res.json({ message: 'Pago registrado', loanId: loan._id, installmentNumber, newStatus: installment.status, paidAmount: installment.paidAmount, penaltyAmount, compoundApplied });
 });
 
 // Update loan (admin or asesor)
